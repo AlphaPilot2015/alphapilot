@@ -9,9 +9,10 @@ COPY app ./app
 # ===== Runner con Nginx + Supervisord =====
 FROM debian:12-slim
 WORKDIR /
-# gettext-base trae 'envsubst' para inyectar $PORT en la conf de nginx
-RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor python3 ca-certificates gettext-base \
-  && rm -rf /var/lib/apt/lists/*
+# gettext-base trae 'envsubst' (para inyectar $PORT en nginx)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      nginx supervisor python3 ca-certificates gettext-base \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copiamos runtime Python y la app
 COPY --from=api /usr/local /usr/local
@@ -20,19 +21,17 @@ COPY --from=api /app /app
 # Frontend estático
 COPY frontend /var/www/html
 
-# Configs: usamos plantilla que referencia ${PORT}
+# Configs: plantilla de nginx que usa ${PORT} y supervisord
 COPY infra/nginx.tmpl.conf /etc/nginx/nginx.tmpl.conf
 COPY infra/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Script de arranque: genera nginx.conf con el $PORT que da Render y lanza supervisord
-RUN bash -lc 'cat > /start.sh << "SH"\n\
-#!/usr/bin/env bash\n\
-set -e\n\
-: "${PORT:=8080}"\n\
-envsubst < /etc/nginx/nginx.tmpl.conf > /etc/nginx/nginx.conf\n\
-exec /usr/bin/supervisord -n\n\
-SH\n\
-chmod +x /start.sh'
+# Script de arranque (compatible con /bin/sh; no requiere bash)
+RUN printf '%s\n' '#!/usr/bin/env sh' \
+    'set -e' \
+    ': "${PORT:=8080}"' \
+    'envsubst < /etc/nginx/nginx.tmpl.conf > /etc/nginx/nginx.conf' \
+    'exec /usr/bin/supervisord -n' > /start.sh \
+ && chmod +x /start.sh
 
-# Render inyecta PORT automáticamente; no fijamos EXPOSE
+# Render inyecta PORT; no hace falta EXPOSE
 CMD ["/start.sh"]
