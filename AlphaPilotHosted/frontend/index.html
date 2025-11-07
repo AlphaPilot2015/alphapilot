@@ -36,6 +36,8 @@
         <p>Let our interface automate the heavy lifting. You remain in control.</p>
         <div style="display:flex;gap:12px;margin:8px 0">
           <button id="demo">Try Live Demo</button>
+          <!-- Resultado de la demo -->
+<div id="demo-output" class="mt-4 rounded-xl p-4 bg-[#111827] text-[#e5e7eb] text-sm" style="display:none"></div>
           <a href="/api/docs" class="btn">API Docs</a>
         </div>
         <hr/>
@@ -66,6 +68,54 @@
         alert('Demo not available');
       }
     };
-  </script>
+  <script>
+  // Llama al endpoint /api/demo y pinta la respuesta
+  const demoBtn = document.querySelector('a[href="/api/demo"], button#demoBtn, a#demoBtn');
+  // si tu botón no tiene ese href/id, añade id="demoBtn" al botón para engancharlo fácil
+
+  const out = document.getElementById('demo-output');
+
+  async function runDemo(e) {
+    if (e) e.preventDefault();
+    out.style.display = 'block';
+    out.textContent = 'Running demo…';
+    try {
+      const res = await fetch('/api/demo', { headers: { 'Accept': 'application/json' }});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+
+      // Render sencillo y claro
+      out.innerHTML = `
+        <div style="font-weight:600;margin-bottom:8px;">Live Demo Result</div>
+        <pre style="white-space:pre-wrap;margin:0">${JSON.stringify(data, null, 2)}</pre>
+        <div style="margin-top:8px;opacity:.8">Fee policy: 10% of realized profits.</div>
+      `;
+    } catch (err) {
+      out.innerHTML = `<span style="color:#fca5a5">Error:</span> ${String(err)}`;
+    }
+  }
+
+  if (demoBtn) {
+    demoBtn.addEventListener('click', runDemo);
+  }
+
+  // Badge de estado (opcional): pinta un punto verde si /api/health responde
+  (async () => {
+    try {
+      const h = await fetch('/api/health');
+      const ok = h.ok;
+      const hdr = document.querySelector('h1, .app-title, [data-app-title]');
+      if (hdr) {
+        const dot = document.createElement('span');
+        dot.title = ok ? 'API online' : 'API offline';
+        dot.style.cssText = `
+          display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;
+          background:${ok ? '#34d399' : '#ef4444'};margin-right:.4rem;vertical-align:middle
+        `;
+        hdr.prepend(dot);
+      }
+    } catch {}
+  })();
+</script>
 </body>
 </html>
