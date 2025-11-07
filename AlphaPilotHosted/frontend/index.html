@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AlphaPilot — Automated Investing</title>
+  <meta name="description" content="Automated investing made simple — multifactor signals, risk controls, and a clear 10% performance fee on realized profits."/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <style>
+    :root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--accent:#7df3e1;--muted:#8aa3c2}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
+    .container{max-width:960px;margin:0 auto;padding:20px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+    .header{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+    .title{font-weight:800;font-size:26px;display:flex;gap:10px;align-items:center}
+    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+    button{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
+    a{color:var(--accent)}
+    .sub{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="title">
+        <img src="/logo.svg" width="140" height="32" alt="AlphaPilot"/>
+        AlphaPilot
+      </div>
+      <nav><a href="/api/terms">Terms</a> &nbsp;|&nbsp; <a href="/api/privacy">Privacy</a></nav>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Automated investing made simple</h2>
+        <p class="sub">Created in 2015 by professional investment developers from Spain and the UAE.</p>
+        <p>Let our interface automate the heavy lifting. You remain in control.</p>
+        <div style="display:flex;gap:12px;margin:8px 0">
+          <button id="demo">Try Live Demo</button>
+          <a href="/api/docs"><button>API Docs</button></a>
+        </div>
+        <hr/>
+        <ul>
+          <li>Smart signals (placeholder), risk controls, and daily automation</li>
+          <li>Transparent fee: 10% of realized profits</li>
+          <li>Withdrawals & bank linking (to be configured with your broker)</li>
+        </ul>
+        <p class="sub"><strong>Important:</strong> Investing involves risk. No guaranteed returns.</p>
+      </div>
+      <div class="card">
+        <h3>How it works</h3>
+        <ol>
+          <li>Create your account</li>
+          <li>Connect your broker</li>
+          <li>Review signals and let AlphaPilot rebalance</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+  <script>
+    document.getElementById('demo').onclick = async () => {
+      try{
+        const r = await fetch('/api/demo');
+        const js = await r.json();
+        alert('Demo ready! Equity: $'+js.equity.toFixed(2));
+      }catch(e){
+        alert('Demo not available');
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='140' height='32' viewBox='0 0 120 28'>
+  <defs>
+    <linearGradient id='g' x1='0' x2='1'>
+      <stop offset='0%' stop-color='#4da3ff'/>
+      <stop offset='100%' stop-color='#7df3e1'/>
+    </linearGradient>
+  </defs>
+  <g fill='url(#g)'><path d='M6 20 L18 8 L22 12 L12 22 Z'/><circle cx='28' cy='10' r='2' /></g>
+  <text x='38' y='19' fill='currentColor' font-family='Segoe UI, Roboto, Arial' font-size='16' font-weight='700'>AlphaPilot</text>
+</svg>
