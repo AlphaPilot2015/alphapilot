@@ -14,15 +14,16 @@
     .header{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
     .title{font-weight:800;font-size:26px;display:flex;gap:10px;align-items:center}
     .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-    button{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
-    a{color:var(--accent)}
+    .btn{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
+    a{color:var(--accent);text-decoration:none}
     .sub{color:var(--muted)}
+    .divider{border:0;border-top:1px solid var(--border);margin:12px 0}
   </style>
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <div class="title">
+      <div class="title" id="appTitle">
         <img src="/logo.svg" width="140" height="32" alt="AlphaPilot"/>
         AlphaPilot
       </div>
@@ -34,13 +35,15 @@
         <h2>Automated investing made simple</h2>
         <p class="sub">Created in 2015 by professional investment developers from Spain and the UAE.</p>
         <p>Let our interface automate the heavy lifting. You remain in control.</p>
+
         <div style="display:flex;gap:12px;margin:8px 0">
-          <button id="demo">Try Live Demo</button>
-          <!-- Resultado de la demo -->
-<div id="demo-output" class="mt-4 rounded-xl p-4 bg-[#111827] text-[#e5e7eb] text-sm" style="display:none"></div>
-          <<a id="demoBtn" href="#" class="btn">Try Live Demo</a>
+          <a id="demoBtn" href="#" class="btn">Try Live Demo</a>
+          <a class="btn" href="/api/docs" target="_blank" rel="noopener">API Docs</a>
         </div>
-        <hr/>
+
+        <div id="demo-output" style="display:none;margin-top:12px;padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;font:14px/1.5 system-ui"></div>
+
+        <hr class="divider"/>
         <ul>
           <li>Smart signals (placeholder), risk controls, and daily automation</li>
           <li>Transparent fee: 10% of realized profits</li>
@@ -48,6 +51,7 @@
         </ul>
         <p class="sub"><strong>Important:</strong> Investing involves risk. No guaranteed returns.</p>
       </div>
+
       <div class="card">
         <h3>How it works</h3>
         <ol>
@@ -58,87 +62,45 @@
       </div>
     </section>
   </div>
+
   <script>
-    document.getElementById('demo').onclick = async () => {
+    // Botón de demo: llama a /api/demo y pinta el resultado
+    const btn = document.getElementById('demoBtn');
+    const out = document.getElementById('demo-output');
+
+    async function runDemo(e){
+      e.preventDefault();
+      out.style.display='block';
+      out.textContent='Running demo…';
       try{
-        const r = await fetch('/api/demo');
-        const js = await r.json();
-        alert('Demo ready! Equity: $'+js.equity.toFixed(2));
-      }catch(e){
-        alert('Demo not available');
+        const r = await fetch('/api/demo',{headers:{'Accept':'application/json'}});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const data = await r.json();
+        out.innerHTML =
+          '<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0;">'
+          + JSON.stringify(data,null,2) +
+          '</pre><div style="opacity:.8;margin-top:8px">Fee policy: 10% of realized profits.</div>';
+      }catch(err){
+        out.innerHTML = '<span style="color:#fca5a5">Error:</span> ' + String(err);
       }
-    };
-  <script>
-  // Llama al endpoint /api/demo y pinta la respuesta
-  const demoBtn = document.querySelector('a[href="/api/demo"], button#demoBtn, a#demoBtn');
-  // si tu botón no tiene ese href/id, añade id="demoBtn" al botón para engancharlo fácil
-
-  const out = document.getElementById('demo-output');
-
-  async function runDemo(e) {
-    if (e) e.preventDefault();
-    out.style.display = 'block';
-    out.textContent = 'Running demo…';
-    try {
-      const res = await fetch('/api/demo', { headers: { 'Accept': 'application/json' }});
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-
-      // Render sencillo y claro
-      out.innerHTML = `
-        <div style="font-weight:600;margin-bottom:8px;">Live Demo Result</div>
-        <pre style="white-space:pre-wrap;margin:0">${JSON.stringify(data, null, 2)}</pre>
-        <div style="margin-top:8px;opacity:.8">Fee policy: 10% of realized profits.</div>
-      `;
-    } catch (err) {
-      out.innerHTML = `<span style="color:#fca5a5">Error:</span> ${String(err)}`;
     }
-  }
+    if(btn) btn.addEventListener('click', runDemo);
 
-  if (demoBtn) {
-    demoBtn.addEventListener('click', runDemo);
-  }
-
-  // Badge de estado (opcional): pinta un punto verde si /api/health responde
-  (async () => {
-    try {
-      const h = await fetch('/api/health');
-      const ok = h.ok;
-      const hdr = document.querySelector('h1, .app-title, [data-app-title]');
-      if (hdr) {
-        const dot = document.createElement('span');
-        dot.title = ok ? 'API online' : 'API offline';
-        dot.style.cssText = `
-          display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;
-          background:${ok ? '#34d399' : '#ef4444'};margin-right:.4rem;vertical-align:middle
-        `;
-        hdr.prepend(dot);
-      }
-    } catch {}
-  })();
-</script>
-  <!-- Resultado de la demo -->
-<div id="demo-output" style="display:none;margin-top:12px;padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;font:14px/1.5 system-ui"></div>
-
-<script>
-  const btn = document.getElementById('demoBtn');
-  const out = document.getElementById('demo-output');
-
-  async function runDemo(e){ 
-    e.preventDefault();
-    out.style.display='block';
-    out.textContent='Running demo…';
-    try{
-      const r = await fetch('/api/demo',{headers:{'Accept':'application/json'}});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const data = await r.json();
-      out.innerHTML = '<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0">'+
-        JSON.stringify(data,null,2)+'</pre><div style="opacity:.8;margin-top:8px">Fee: 10% de beneficios realizados.</div>';
-    }catch(err){
-      out.innerHTML = '<span style="color:#fca5a5">Error:</span> '+String(err);
-    }
-  }
-  if(btn) btn.addEventListener('click', runDemo);
-</script>
+    // Badge de estado: punto verde si /api/health responde
+    (async () => {
+      try {
+        const h = await fetch('/api/health');
+        const ok = h.ok;
+        const t = document.getElementById('appTitle');
+        if (t) {
+          const dot = document.createElement('span');
+          dot.title = ok ? 'API online' : 'API offline';
+          dot.style.cssText = 'display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;background:'+(ok?'#34d399':'#ef4444')+';margin-right:.4rem;vertical-align:middle';
+          t.prepend(dot);
+        }
+      } catch {}
+    })();
+  </script>
 </body>
 </html>
+
