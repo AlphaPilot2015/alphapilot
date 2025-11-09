@@ -1,78 +1,43 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>AlphaPilot — Dashboard</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
   <style>
-    body{background:#0b0f1a;color:#eaf1ff;font-family:system-ui;margin:0}
-    .wrap{max-width:960px;margin:0 auto;padding:20px}
-    .card{background:#0f1625;border:1px solid #1f2b44;border-radius:12px;padding:16px;margin:12px 0}
-    input,button{padding:10px;border-radius:10px;border:1px solid #1f2b44;background:#0b1220;color:#eaf1ff}
-    button{background:#4da3ff;color:#001;border:0;cursor:pointer}
+    body{margin:0;font:14px/1.5 system-ui,Arial;background:#0b0f1a;color:#eaf1ff}
+    .wrap{max-width:960px;margin:0 auto;padding:24px}
+    .card{background:#0f1625;border:1px solid #1f2b44;border-radius:14px;padding:16px}
+    a.btn,button{display:inline-block;background:#4da3ff;color:#001;text-decoration:none;
+      padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
     pre{white-space:pre-wrap}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h2>AlphaPilot — Dashboard (Paper)</h2>
-
-  <div class="card">
-    <label>API Token:
-      <input id="token" placeholder="pegá aquí tu API_TOKEN" style="width:320px">
-    </label>
-    <button id="save">Guardar</button>
+  <div class="wrap">
+    <h1>AlphaPilot — Dashboard</h1>
+    <div class="card">
+      <p>Estado API: <span id="status">…</span></p>
+      <p><button id="run">Probar /api/demo</button></p>
+      <pre id="out"></pre>
+    </div>
   </div>
-
-  <div class="card">
-    <button id="load">Refrescar Cuenta/Posiciones</button>
-    <pre id="account">Cuenta...</pre>
-    <pre id="positions">Posiciones...</pre>
-    <pre id="orders">Órdenes...</pre>
-  </div>
-
-  <div class="card">
-    <h3>Enviar orden mercado</h3>
-    <input id="symbol" placeholder="AAPL" style="width:100px">
-    <input id="qty" type="number" min="1" value="1" style="width:80px">
-    <select id="side">
-      <option value="buy">BUY</option>
-      <option value="sell">SELL</option>
-    </select>
-    <button id="send">Enviar</button>
-    <pre id="orderResult"></pre>
-  </div>
-</div>
-
-<script>
-const H = (k)=>({'X-API-KEY': localStorage.getItem('API_TOKEN')||'', 'Accept':'application/json','Content-Type':'application/json'});
-
-document.getElementById('save').onclick = ()=>{
-  localStorage.setItem('API_TOKEN', document.getElementById('token').value.trim());
-  alert('Token guardado en este navegador');
-};
-
-document.getElementById('load').onclick = async ()=>{
-  const a = await fetch('/api/account', {headers:H()});
-  document.getElementById('account').textContent = JSON.stringify(await a.json(), null, 2);
-
-  const p = await fetch('/api/positions', {headers:H()});
-  document.getElementById('positions').textContent = JSON.stringify(await p.json(), null, 2);
-
-  const o = await fetch('/api/orders', {headers:H()});
-  document.getElementById('orders').textContent = JSON.stringify(await o.json(), null, 2);
-};
-
-document.getElementById('send').onclick = async ()=>{
-  const body = {
-    symbol: document.getElementById('symbol').value || 'AAPL',
-    qty: parseInt(document.getElementById('qty').value || '1', 10),
-    side: document.getElementById('side').value,
-    tif: 'day'
-  };
-  const r = await fetch('/api/order', {method:'POST', headers:H(), body: JSON.stringify(body)});
-  document.getElementById('orderResult').textContent = JSON.stringify(await r.json(), null, 2);
-};
-</script>
+  <script>
+    (async () => {
+      try{
+        const r = await fetch('/api/health');
+        document.getElementById('status').textContent = r.ok ? 'ONLINE' : 'OFFLINE';
+      }catch{ document.getElementById('status').textContent = 'OFFLINE'; }
+    })();
+    document.getElementById('run').onclick = async () => {
+      const out = document.getElementById('out');
+      out.textContent = 'Ejecutando…';
+      try{
+        const r = await fetch('/api/demo',{headers:{'Accept':'application/json'}});
+        out.textContent = JSON.stringify(await r.json(), null, 2);
+      }catch(e){ out.textContent = 'Error: '+e; }
+    };
+  </script>
 </body>
 </html>
