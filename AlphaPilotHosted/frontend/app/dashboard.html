@@ -1,108 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>AlphaPilot — Dashboard</title>
   <style>
-    body{margin:0;font:14px/1.5 system-ui,Arial;background:#0b0f1a;color:#eaf1ff}
-    .wrap{max-width:980px;margin:0 auto;padding:20px}
-    .card{background:#0f1625;border:1px solid #1f2b44;border-radius:14px;padding:16px;margin:12px 0}
-    button{background:#4da3ff;color:#001;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
-    input,select{padding:8px;border-radius:8px;border:1px solid #1f2b44;background:#0b1020;color:#eaf1ff}
-    pre{white-space:pre-wrap;background:#0b1020;padding:12px;border-radius:12px}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
+    body{background:#0b0f1a;color:#eaf1ff;font-family:system-ui;margin:0}
+    .wrap{max-width:960px;margin:0 auto;padding:20px}
+    .card{background:#0f1625;border:1px solid #1f2b44;border-radius:12px;padding:16px;margin:12px 0}
+    input,button{padding:10px;border-radius:10px;border:1px solid #1f2b44;background:#0b1220;color:#eaf1ff}
+    button{background:#4da3ff;color:#001;border:0;cursor:pointer}
+    pre{white-space:pre-wrap}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>AlphaPilot — Dashboard (Private)</h1>
+<div class="wrap">
+  <h2>AlphaPilot — Dashboard (Paper)</h2>
 
-    <div class="card">
-      <h3>API Key (solo tú)</h3>
-      <div class="row">
-        <input id="k" placeholder="X-API-Key aquí" style="min-width:280px"/>
-        <button id="savek">Guardar</button>
-        <button id="cleark">Borrar</button>
-      </div>
-      <small>Se guarda en localStorage del navegador.</small>
-    </div>
-
-    <div class="card">
-      <h3>Portafolio</h3>
-      <button id="btnPortfolio">Ver /api/portfolio</button>
-      <pre id="outPortfolio"></pre>
-    </div>
-
-    <div class="card">
-      <h3>Orden de mercado</h3>
-      <div class="row">
-        <input id="sym" value="SPY" placeholder="Símbolo" />
-        <select id="side"><option>buy</option><option>sell</option></select>
-        <input id="qty" type="number" step="1" value="1" placeholder="Cantidad"/>
-        <button id="btnOrder">Enviar orden</button>
-      </div>
-      <pre id="outOrder"></pre>
-    </div>
-
-    <div class="card">
-      <h3>Estrategia automática</h3>
-      <div class="row">
-        <button id="enableStrat">Activar</button>
-        <button id="disableStrat">Desactivar</button>
-      </div>
-      <pre id="outStrat"></pre>
-    </div>
-
-    <div class="card">
-      <h3>Fee (10% beneficios realizados)</h3>
-      <button id="btnFee">Ver /api/fee/preview</button>
-      <pre id="outFee"></pre>
-    </div>
+  <div class="card">
+    <label>API Token:
+      <input id="token" placeholder="pegá aquí tu API_TOKEN" style="width:320px">
+    </label>
+    <button id="save">Guardar</button>
   </div>
 
+  <div class="card">
+    <button id="load">Refrescar Cuenta/Posiciones</button>
+    <pre id="account">Cuenta...</pre>
+    <pre id="positions">Posiciones...</pre>
+    <pre id="orders">Órdenes...</pre>
+  </div>
+
+  <div class="card">
+    <h3>Enviar orden mercado</h3>
+    <input id="symbol" placeholder="AAPL" style="width:100px">
+    <input id="qty" type="number" min="1" value="1" style="width:80px">
+    <select id="side">
+      <option value="buy">BUY</option>
+      <option value="sell">SELL</option>
+    </select>
+    <button id="send">Enviar</button>
+    <pre id="orderResult"></pre>
+  </div>
+</div>
+
 <script>
-  const $ = s => document.querySelector(s);
-  const getKey = ()=> localStorage.getItem('ADMIN_API_KEY')||'';
+const H = (k)=>({'X-API-KEY': localStorage.getItem('API_TOKEN')||'', 'Accept':'application/json','Content-Type':'application/json'});
 
-  $('#savek').onclick = ()=>{ localStorage.setItem('ADMIN_API_KEY', $('#k').value.trim()); alert('Guardada'); };
-  $('#cleark').onclick = ()=>{ localStorage.removeItem('ADMIN_API_KEY'); $('#k').value=''; alert('Borrada'); };
-  $('#k').value = getKey();
+document.getElementById('save').onclick = ()=>{
+  localStorage.setItem('API_TOKEN', document.getElementById('token').value.trim());
+  alert('Token guardado en este navegador');
+};
 
-  async function call(path, opts={}){
-    const key = getKey();
-    const headers = Object.assign({}, opts.headers||{}, key ? { 'X-API-Key': key } : {});
-    const r = await fetch(path, Object.assign({ headers }, opts));
-    const text = await r.text();
-    return { ok: r.ok, status: r.status, text };
-  }
+document.getElementById('load').onclick = async ()=>{
+  const a = await fetch('/api/account', {headers:H()});
+  document.getElementById('account').textContent = JSON.stringify(await a.json(), null, 2);
 
-  $('#btnPortfolio').onclick = async()=>{
-    const res = await call('/api/portfolio');
-    $('#outPortfolio').textContent = res.text;
+  const p = await fetch('/api/positions', {headers:H()});
+  document.getElementById('positions').textContent = JSON.stringify(await p.json(), null, 2);
+
+  const o = await fetch('/api/orders', {headers:H()});
+  document.getElementById('orders').textContent = JSON.stringify(await o.json(), null, 2);
+};
+
+document.getElementById('send').onclick = async ()=>{
+  const body = {
+    symbol: document.getElementById('symbol').value || 'AAPL',
+    qty: parseInt(document.getElementById('qty').value || '1', 10),
+    side: document.getElementById('side').value,
+    tif: 'day'
   };
-
-  $('#btnOrder').onclick = async()=>{
-    const sym = $('#sym').value.trim();
-    const side = $('#side').value;
-    const qty = $('#qty').value;
-    const res = await call(`/api/orders/market?symbol=${encodeURIComponent(sym)}&side=${encodeURIComponent(side)}&qty=${encodeURIComponent(qty)}`, { method:'POST' });
-    $('#outOrder').textContent = res.text;
-  };
-
-  $('#enableStrat').onclick = async()=>{
-    const res = await call('/api/strategy/toggle?enable=true', { method:'POST' });
-    $('#outStrat').textContent = res.text;
-  };
-  $('#disableStrat').onclick = async()=>{
-    const res = await call('/api/strategy/toggle?enable=false', { method:'POST' });
-    $('#outStrat').textContent = res.text;
-  };
-
-  $('#btnFee').onclick = async()=>{
-    const res = await call('/api/fee/preview');
-    $('#outFee').textContent = res.text;
-  };
+  const r = await fetch('/api/order', {method:'POST', headers:H(), body: JSON.stringify(body)});
+  document.getElementById('orderResult').textContent = JSON.stringify(await r.json(), null, 2);
+};
 </script>
 </body>
 </html>
