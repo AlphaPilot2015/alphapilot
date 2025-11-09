@@ -41,3 +41,198 @@
   </script>
 </body>
 </html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AlphaPilot — Dashboard</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <style>
+    :root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--pri:#4da3ff;--acc:#7df3e1;--muted:#8aa3c2}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    .grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+    h1{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+    input,button,textarea{border-radius:10px;border:1px solid var(--border);background:#0c1220;color:#eaf1ff;padding:10px}
+    button{background:var(--pri);border:0;color:#001;cursor:pointer}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px;border-bottom:1px solid var(--border)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{color:var(--muted)}
+    .ok{color:#34d399}.bad{color:#f87171}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0c1220;border:1px solid var(--border)}
+    pre{white-space:pre-wrap;word-break:break-word;background:#0c1220;border:1px solid var(--border);padding:10px;border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📊 AlphaPilot — Dashboard</h1>
+
+    <div class="grid">
+      <section class="card">
+        <h3>Portfolio</h3>
+        <div class="row">
+          <input id="token" placeholder="X-API-KEY" style="min-width:260px"/>
+          <button id="btnRefresh">Refresh</button>
+        </div>
+        <div id="pf"></div>
+      </section>
+
+      <section class="card">
+        <h3>Influencers</h3>
+        <div class="row">
+          <input id="influencers" placeholder="trump,powell,elon musk" style="flex:1"/>
+          <button id="btnSaveInfluencers">Save</button>
+        </div>
+        <p class="muted" style="margin-top:8px">Afectan al sesgo de noticias (más peso si aparecen).</p>
+        <div id="infStatus" class="muted"></div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <h3>Señales</h3>
+      <div class="row">
+        <input id="symbols" placeholder="AAPL,MSFT,BTCUSD" style="min-width:260px"/>
+        <button id="btnSignals">Get Signals</button>
+        <button id="btnRebalance">Rebalance Now</button>
+      </div>
+      <div id="signals" style="margin-top:12px"></div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <h3>News Bias</h3>
+      <div class="row">
+        <input id="newsSymbol" placeholder="AAPL" style="min-width:160px"/>
+        <button id="btnNewsBias">Check</button>
+      </div>
+      <div id="nbias" style="margin-top:12px"></div>
+    </section>
+  </div>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+
+    async function api(path, {method='GET', body=null, token=null} = {}) {
+      const headers = {'Accept':'application/json'};
+      if (token) headers['X-API-KEY'] = token;
+      if (body) headers['Content-Type'] = 'application/json';
+      const res = await fetch(path, {method, headers, body: body ? JSON.stringify(body) : null});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function refreshPortfolio() {
+      const token = $('#token').value.trim();
+      try {
+        const data = await api('/api/portfolio', {token});
+        const pos = (data.positions||[]);
+        let html = `
+          <div class="row">
+            <div class="pill">Cash: <b>$${Number(data.cash||0).toFixed(2)}</b></div>
+            <div class="muted">Positions: ${pos.length}</div>
+          </div>
+          <table style="margin-top:8px">
+            <thead><tr><th>Symbol</th><th>Qty</th><th>Avg Px</th><th>Market</th></tr></thead>
+            <tbody>
+              ${pos.map(p => `
+                <tr>
+                  <td>${p.symbol}</td>
+                  <td>${Number(p.qty).toFixed(0)}</td>
+                  <td>$${Number(p.avg_price||0).toFixed(2)}</td>
+                  <td>$${Number(p.market_value||0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        $('#pf').innerHTML = html;
+      } catch (e) {
+        $('#pf').innerHTML = `<span class="bad">Error:</span> ${String(e.message||e)}`;
+      }
+    }
+
+    async function loadInfluencers() {
+      const token = $('#token').value.trim();
+      try {
+        const data = await api('/api/influencers', {token});
+        $('#influencers').value = (data.influencers||[]).join(',');
+        $('#infStatus').textContent = 'Loaded';
+      } catch (e) { $('#infStatus').textContent = `Error: ${String(e)}`; }
+    }
+
+    async function saveInfluencers() {
+      const token = $('#token').value.trim();
+      const arr = $('#influencers').value.split(',').map(s=>s.trim()).filter(Boolean);
+      try {
+        await api('/api/influencers', {method:'POST', token, body:{influencers:arr}});
+        $('#infStatus').textContent = 'Saved ✓';
+      } catch (e) { $('#infStatus').textContent = `Error: ${String(e)}`; }
+    }
+
+    async function getSignals() {
+      const token = $('#token').value.trim();
+      const symbols = $('#symbols').value.trim() || 'AAPL,MSFT,BTCUSD';
+      try {
+        const dat = await api(`/api/signal_multi?symbols=${encodeURIComponent(symbols)}`, {token});
+        const rows = Object.entries(dat).map(([sym, v]) => {
+          const sig = (v.signal||'hold').toUpperCase();
+          const cls = sig==='BUY' ? 'ok' : (sig==='SELL' ? 'bad' : 'muted');
+          return `
+            <tr>
+              <td>${sym}</td>
+              <td class="${cls}">${sig}</td>
+              <td>$${Number(v.last||0).toFixed(2)}</td>
+              <td>${Number(v.sma_fast||0).toFixed(2)}</td>
+              <td>${Number(v.sma_slow||0).toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+        $('#signals').innerHTML = `
+          <table>
+            <thead><tr><th>Symbol</th><th>Signal</th><th>Last</th><th>SMA(fast)</th><th>SMA(slow)</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      } catch (e) {
+        $('#signals').innerHTML = `<span class="bad">Error:</span> ${String(e.message||e)}`;
+      }
+    }
+
+    async function doRebalance() {
+      const token = $('#token').value.trim();
+      const symbols = $('#symbols').value.split(',').map(s=>s.trim()).filter(Boolean);
+      try {
+        const dat = await api('/api/rebalance_multi', {method:'POST', token, body:{symbols}});
+        $('#signals').innerHTML = `<div class="muted">Rebalance result:</div><pre>${JSON.stringify(dat,null,2)}</pre>`;
+        refreshPortfolio();
+      } catch (e) {
+        $('#signals').innerHTML = `<span class="bad">Error:</span> ${String(e.message||e)}`;
+      }
+    }
+
+    async function checkNewsBias() {
+      const token = $('#token').value.trim();
+      const s = $('#newsSymbol').value.trim() || 'AAPL';
+      try {
+        const d = await api(`/api/news_bias?symbol=${encodeURIComponent(s)}`, {token});
+        const nb = Number(d.news_bias||0);
+        const cls = nb>0 ? 'ok' : (nb<0 ? 'bad' : 'muted');
+        $('#nbias').innerHTML = `Bias ${s}: <b class="${cls}">${nb.toFixed(3)}</b>`;
+      } catch (e) { $('#nbias').textContent = `Error: ${String(e)}`; }
+    }
+
+    // eventos
+    $('#btnRefresh').onclick = refreshPortfolio;
+    $('#btnSaveInfluencers').onclick = saveInfluencers;
+    $('#btnSignals').onclick = getSignals;
+    $('#btnRebalance').onclick = doRebalance;
+    $('#btnNewsBias').onclick = checkNewsBias;
+
+    // auto-init
+    (async ()=>{
+      await refreshPortfolio();
+      await loadInfluencers();
+    })();
+  </script>
+</body>
+</html>
