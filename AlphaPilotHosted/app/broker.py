@@ -45,3 +45,28 @@ def submit_market_order(symbol: str, qty: int, side: str):
         return o._raw
     except APIError as e:
         return {"error": str(e)}
+# --- Añadir en app/broker.py ---
+
+from typing import List, Dict
+import pandas as pd
+
+def bars_multi(symbols: List[str], limit=50, tf=TimeFrame.Minute):
+    """
+    Devuelve un dict {symbol: DataFrame} con las últimas velas por símbolo.
+    Usa el endpoint multi-símbolo para reducir llamadas y evitar límites.
+    """
+    if not symbols:
+        return {}
+    # DataFrame multi-símbolo (índice multi: (symbol, timestamp))
+    df = api.get_bars(symbols, tf, limit=limit).df
+    out: Dict[str, pd.DataFrame] = {}
+    if df is None or df.empty:
+        return out
+    # Agrupa por símbolo
+    for sym in symbols:
+        sdf = df[df.index.get_level_values("symbol") == sym]
+        if not sdf.empty:
+            # quita el nivel de índice del símbolo para trabajar cómodo
+            sdf = sdf.droplevel("symbol")
+            out[sym] = sdf
+    return out
