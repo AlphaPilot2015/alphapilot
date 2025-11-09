@@ -70,3 +70,116 @@ def api_rebalance(symbol: str = "AAPL", x_api_key: str = Header(None, alias="X-A
     """
     require_token(x_api_key)
     return rebalance_symbol(symbol)
+
+# --- imports nuevos arriba de todo ---
+from fastapi import Header, HTTPException, Body
+from typing import List, Dict, Any
+import os
+
+from .strategy import (
+    signal_sma, signals_sma_multi, blended_signal, news_bias_for, refresh_news_bias,
+    rebalance_symbol, rebalance_multi
+)
+from .broker import positions, get_cash
+
+# --- auth por token simple ---
+API_TOKEN = os.getenv("API_TOKEN", "")
+
+def require_token(x_api_key: str | None):
+    if not API_TOKEN:
+        return
+    if x_api_key != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid API token")
+
+# ------------------- ENDPOINTS NUEVOS -------------------
+
+@app.get("/api/signal_multi")
+def api_signal_multi(
+    symbols: str = "AAPL,MSFT,BTCUSD",
+    x_api_key: str = Header(None, alias="X-API-KEY")
+):
+    """Señales SMA para varios símbolos de una sola vez."""
+    require_token(x_api_key)
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    data = signals_sma_multi(syms)
+    # normaliza respuesta a {symbol:{signal, ...}}
+    out: Dict[str, Any] = {}
+    for sym, tup in data.items():
+        sig, info = tup
+        out[sym] = {"signal": sig, **(info or {})}
+    return out
+
+@app.get("/api/blended_signal")
+def api_blended_signal(
+    symbol: str = "AAPL",
+    x_api_key: str = Header(None, alias="X-API-KEY")
+):
+    """Señal combinada (técnico + sesgo noticias)."""
+    require_token(x_api_key)
+    sig, info = blended_signal(symbol)
+    return {"symbol": symbol, "signal": sig, **info}
+
+@app.get("/api/news_bias")
+def api_news_bias(
+    symbol: str = "AAPL",
+    x_api_key: str = Header(None, alias="X-API-KEY")
+):
+    """Devuelve el sesgo actual por noticias para un símbolo."""
+    require_token(x_api_key)
+    b = news_bias_for(symbol)
+    return {"symbol": symbol, "news_bias": b}
+
+@app.post("/api/rebalance_multi")
+def api_rebalance_multi(
+    payload: Dict[str, Any] = Body(...),
+    x_api_key: str = Header(None, alias="X-API-KEY")
+):
+    """
+    Fuerza un rebalance sobre varios símbolos.
+    Body JSON: { "symbols": ["AAPL","MSFT","BTCUSD"] }
+    """
+    require_token(x_api_key)
+    syms = payload.get("symbols") or []
+    if not syms:
+        raise HTTPException(400, "symbols required")
+    syms = [str(s).strip().upper() for s in syms if str(s).strip()]
+    return rebalance_multi(syms)
+
+@app.get("/api/portfolio")
+def api_portfolio(x_api_key: str = Header(None, alias="X-API-KEY")):
+    """Resumen rápido de cash y posiciones."""
+    require_token(x_api_key)
+    return {"cash": get_cash(), "positions": positions()}
+
+# Influencers configurables vía env; expón lectura/escritura en caliente (memoria)
+_INFLUENCERS_MEM: List[str] | None = None
+
+@app.get("/api/influencers")
+def api_influencers(x_api_key: str = Header(None, alias="X-API-KEY")):
+    require_token(x_api_key)
+    global _INFLUENCERS_MEM
+    current = _INFLUENCERS_MEM
+    if current is None:
+        env_val = os.getenv("INFLUENCERS", "trump,powell,elon musk")
+        current = [s.strip() for s in env_val.split(",") if s.strip()]
+        _INFLUENCERS_MEM = current
+    return {"influencers": current}
+
+@app.post("/api/influencers")
+def api_set_influencers(
+    payload: Dict[str, Any] = Body(...),
+    x_api_key: str = Header(None, alias="X-API-KEY")
+):
+    """
+    Body JSON: { "influencers": ["trump", "powell", "elon musk", "yellen"] }
+    Esto solo guarda en memoria del proceso (suficiente para Render mientras está vivo).
+    """
+    require_token(x_api_key)
+    global _INFLUENCERS_MEM
+    arr = payload.get("influencers") or []
+    if not isinstance(arr, list):
+        raise HTTPException(400, "influencers must be a list of strings")
+    _INFLUENCERS_MEM = [str(s).strip() for s in arr if str(s).strip()]
+    # provoca refresco de sesgo en la próxima llamada
+    refresh_news_bias()
+    return {"ok": True, "influencers": _INFLUENCERS_MEM}
