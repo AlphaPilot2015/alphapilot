@@ -218,3 +218,18 @@ def blended_signal(symbol: str, fast=5, slow=20):
     if nb <= NEWS_NEG_TH:
         return "sell", info
     return "hold", info
+    
+# Sustituye dentro de rebalance_symbol:
+sig, info = blended_signal(symbol)
+price = info.get("last", 0.0)
+cash = get_cash()
+bias = float(info.get("news_bias", 0.0) or 0.0)
+
+# Ajusta tamaño por bias: 0..1 ⇒ escala adicional (ej. 0.5 bias => +50% tamaño)
+scale = 1.0 + NEWS_WEIGHT * abs(bias)
+
+if sig == "buy":
+    qty = _desired_qty(cash, price)
+    qty = int(qty * scale)
+    ...
+elif sig == "sell" ...
