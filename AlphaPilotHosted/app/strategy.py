@@ -120,3 +120,101 @@ def rebalance_multi(symbols: List[str]) -> Dict[str, dict]:
         else:
             results[sym] = {"action": "hold", "info": info}
     return results
+# app/strategy.py (añadir al final)
+import os, time
+from typing import Dict, List, Tuple
+from .news import fetch_latest, contains_influencer
+from .sentiment import sentiment_score
+
+NEWS_BIAS_TTL_SEC = int(os.getenv("NEWS_BIAS_TTL_SEC", "300"))  # 5 min
+NEWS_POS_TH = float(os.getenv("NEWS_POS_TH", "0.25"))
+NEWS_NEG_TH = float(os.getenv("NEWS_NEG_TH", "-0.25"))
+NEWS_WEIGHT = float(os.getenv("NEWS_WEIGHT", "0.5"))  # 0..1
+SYMBOL_KEYWORDS = {
+    # muy simple: palabras que asocias a un símbolo
+    "AAPL": ["apple", "iphone", "cook"],
+    "MSFT": ["microsoft", "windows", "azure", "openai"],
+    "TSLA": ["tesla", "musk"],
+    "NVDA": ["nvidia", "gpu", "ai chip"],
+    "BTCUSD": ["bitcoin", "btc", "crypto"],
+}
+
+_last_news_bias: Dict[str, Tuple[float, float]] = {}  # symbol -> (bias, ts)
+
+def _symbol_bias_from_news(items) -> Dict[str, float]:
+    """
+    Calcula un sesgo por símbolo en [-1..+1] con las noticias recientes.
+    Usa match por keywords + sentimiento VADER. Influencers aumentan el peso.
+    """
+    bias: Dict[str, float] = {}
+    for it in items:
+        text = f"{it['title']} {it.get('summary','')}"
+        base = sentiment_score(text)
+        inf_hits = contains_influencer(text)
+        if inf_hits:
+            # Si hay influencers (p.ej. 'trump'), amplificamos el impacto
+            base *= 1.5
+
+        # Asigna a símbolos según keywords
+        for sym, keys in SYMBOL_KEYWORDS.items():
+            if any(k in text.lower() for k in keys):
+                bias[sym] = bias.get(sym, 0.0) + base
+
+    # Normaliza a [-1..1]
+    for sym, val in list(bias.items()):
+        if val > 1: val = 1
+        if val < -1: val = -1
+        bias[sym] = val
+    return bias
+
+def refresh_news_bias():
+    """Refresca sesgos cada NEWS_BIAS_TTL_SEC y los cachea."""
+    global _last_news_bias
+    now = time.time()
+    if _last_news_bias and all((now - ts) < NEWS_BIAS_TTL_SEC for (_, ts) in _last_news_bias.values()):
+        return  # Aún válido
+    items = fetch_latest(max_items=30)
+    new_bias = _symbol_bias_from_news(items)
+    # cachea con timestamp
+    _last_news_bias = {sym: (b, now) for sym, b in new_bias.items()}
+
+def news_bias_for(sym: str) -> float:
+    """Devuelve el sesgo actual para un símbolo (si no hay, 0)."""
+    refresh_news_bias()
+    bts = _last_news_bias.get(sym)
+    if not bts:
+        return 0.0
+    return float(bts[0])
+
+def blended_signal(symbol: str, fast=5, slow=20):
+    """
+    Combina SMA (técnico) con sesgo de noticias.
+    - Si SMA=buy y news>POS_TH => buy fuerte
+    - Si SMA=buy pero news<NEG_TH => rebaja a hold
+    - Similar para sell
+    """
+    sig, info = signal_sma(symbol, fast=fast, slow=slow)
+    nb = news_bias_for(symbol)
+    info["news_bias"] = nb
+
+    if sig == "buy":
+        if nb >= NEWS_POS_TH:
+            return "buy", info
+        if nb <= NEWS_NEG_TH:
+            return "hold", info  # neutraliza compra por noticia negativa
+        # mezcla: probamos a mantener buy pero con menos qty (ver rebalance)
+        return "buy", info
+
+    if sig == "sell":
+        if nb <= NEWS_NEG_TH:
+            return "sell", info
+        if nb >= NEWS_POS_TH:
+            return "hold", info  # neutraliza venta por noticia positiva
+        return "sell", info
+
+    # hold técnico ⇒ deja que news empuje ligeramente
+    if nb >= NEWS_POS_TH:
+        return "buy", info
+    if nb <= NEWS_NEG_TH:
+        return "sell", info
+    return "hold", info
