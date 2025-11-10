@@ -1,71 +1,52 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>AlphaPilot — Automated Investing</title>
-  <meta name="description" content="Automated investing made simple."/>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-  <style>
-    :root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--accent:#7df3e1;--muted:#8aa3c2}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
-    .container{max-width:960px;margin:0 auto;padding:20px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
-    .header{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
-    .title{font-weight:800;font-size:26px;display:flex;gap:10px;align-items:center}
-    .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-    button,a.btn{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none}
-    a{color:var(--accent)}
-    .sub{color:var(--muted)}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header class="header">
-      <div class="title">AlphaPilot</div>
-      <nav><a href="/api/docs">API Docs</a> &nbsp;|&nbsp; <a href="/app/dashboard.html">Dashboard</a></nav>
-    </header>
-
-    <section class="grid">
-      <div class="card">
-        <h2>Automated investing made simple</h2>
-        <p class="sub">Demo funcional + API real detrás.</p>
-        <div style="display:flex;gap:12px;margin:8px 0">
-          <button id="demo">Try Live Demo</button>
-          <a class="btn" href="/app/dashboard.html">Open Dashboard</a>
-        </div>
-        <div id="demo-output" style="display:none;margin-top:12px;padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;font:14px/1.5 system-ui"></div>
-        <hr/>
-        <ul>
-          <li>Signals, risk controls, automation</li>
-          <li>Transparent fee: 10% profits (demo)</li>
-          <li>Broker integration pendiente (Alpaca)</li>
-        </ul>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AlphaPilot — Automated Investing</title>
+<style>
+:root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--accent:#7df3e1;--muted:#8aa3c2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
+.container{max-width:960px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.header{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.title{font-weight:800;font-size:26px;display:flex;gap:10px;align-items:center}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+button,a.btn{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none}
+a{color:var(--accent)}.sub{color:var(--muted)}
+</style></head><body>
+<div class="container">
+  <header class="header">
+    <div class="title">AlphaPilot</div>
+    <nav><a href="/api/docs">API Docs</a> &nbsp;|&nbsp; <a href="/app/dashboard.html">Dashboard</a></nav>
+  </header>
+  <section class="grid">
+    <div class="card">
+      <h2>Automated investing made simple</h2>
+      <p class="sub">Demo funcional + API real detrás.</p>
+      <div style="display:flex;gap:12px;margin:8px 0">
+        <button id="demo">Try Live Demo</button>
+        <a class="btn" href="/app/dashboard.html">Open Dashboard</a>
       </div>
-      <div class="card">
-        <h3>How it works</h3>
-        <ol>
-          <li>Open Dashboard</li>
-          <li>Verifica API `/health` y `/api/demo`</li>
-          <li>Conecta broker (próximo paso)</li>
-        </ol>
-      </div>
-    </section>
-  </div>
-  <script>
-    document.getElementById('demo').onclick = async () => {
-      const out = document.getElementById('demo-output');
-      out.style.display='block';
-      out.textContent='Running demo…';
-      try{
-        const r = await fetch('/api/demo');
-        const js = await r.json();
-        out.innerHTML = '<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0">'+
-          JSON.stringify(js,null,2)+'</pre>';
-      }catch(e){
-        out.textContent = 'Demo not available';
-      }
-    };
-  </script>
-</body>
-</html>
+      <div id="demo-output" style="display:none;margin-top:12px;padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;font:14px/1.5 system-ui"></div>
+      <hr/>
+      <ul>
+        <li>Signals, risk controls, automation</li>
+        <li>Transparent fee (demo)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>How it works</h3>
+      <ol>
+        <li>Open Dashboard</li>
+        <li>Prueba /health y /api/demo</li>
+      </ol>
+    </div>
+  </section>
+</div>
+<script>
+document.getElementById('demo').onclick=async()=>{
+  const out=document.getElementById('demo-output');out.style.display='block';out.textContent='Running demo…';
+  try{const r=await fetch('/api/demo');const js=await r.json();
+    out.innerHTML='<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0">'+JSON.stringify(js,null,2)+'</pre>';
+  }catch(e){out.textContent='Demo not available';}
+};
+</script>
+</body></html>
