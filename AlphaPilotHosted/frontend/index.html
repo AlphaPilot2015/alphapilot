@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>AlphaPilot — Automated Investing</title>
-  <meta name="description" content="Automated investing made simple — multifactor signals, risk controls, and a clear 10% performance fee on realized profits."/>
+  <meta name="description" content="Automated investing made simple."/>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
   <style>
     :root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--accent:#7df3e1;--muted:#8aa3c2}
@@ -14,95 +14,58 @@
     .header{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
     .title{font-weight:800;font-size:26px;display:flex;gap:10px;align-items:center}
     .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-    .btn{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
-    a{color:var(--accent);text-decoration:none}
+    button,a.btn{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer;text-decoration:none}
+    a{color:var(--accent)}
     .sub{color:var(--muted)}
-    .divider{border:0;border-top:1px solid var(--border);margin:12px 0}
   </style>
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <div class="title" id="appTitle">
-        <img src="/logo.svg" width="140" height="32" alt="AlphaPilot"/>
-        AlphaPilot
-      </div>
-      <nav><a href="/api/terms">Terms</a> &nbsp;|&nbsp; <a href="/api/privacy">Privacy</a></nav>
+      <div class="title">AlphaPilot</div>
+      <nav><a href="/api/docs">API Docs</a> &nbsp;|&nbsp; <a href="/app/dashboard.html">Dashboard</a></nav>
     </header>
 
     <section class="grid">
       <div class="card">
         <h2>Automated investing made simple</h2>
-        <p class="sub">Created in 2015 by professional investment developers from Spain and the UAE.</p>
-        <p>Let our interface automate the heavy lifting. You remain in control.</p>
-
+        <p class="sub">Demo funcional + API real detrás.</p>
         <div style="display:flex;gap:12px;margin:8px 0">
-          <a id="demoBtn" href="#" class="btn">Try Live Demo</a>
-          <a class="btn" href="/app/dashboard.html">Abrir Dashboard</a>
-          <a class="btn" href="/api/docs" target="_blank" rel="noopener">API Docs</a>
+          <button id="demo">Try Live Demo</button>
+          <a class="btn" href="/app/dashboard.html">Open Dashboard</a>
         </div>
-
         <div id="demo-output" style="display:none;margin-top:12px;padding:12px;border-radius:12px;background:#111827;color:#e5e7eb;font:14px/1.5 system-ui"></div>
-
-        <hr class="divider"/>
+        <hr/>
         <ul>
-          <li>Smart signals (placeholder), risk controls, and daily automation</li>
-          <li>Transparent fee: 10% of realized profits</li>
-          <li>Withdrawals & bank linking (to be configured with your broker)</li>
+          <li>Signals, risk controls, automation</li>
+          <li>Transparent fee: 10% profits (demo)</li>
+          <li>Broker integration pendiente (Alpaca)</li>
         </ul>
-        <p class="sub"><strong>Important:</strong> Investing involves risk. No guaranteed returns.</p>
       </div>
-
       <div class="card">
         <h3>How it works</h3>
         <ol>
-          <li>Create your account</li>
-          <li>Connect your broker</li>
-          <li>Review signals and let AlphaPilot rebalance</li>
+          <li>Open Dashboard</li>
+          <li>Verifica API `/api/health` y `/api/portfolio`</li>
+          <li>Conecta broker (próximo paso)</li>
         </ol>
       </div>
     </section>
   </div>
-
   <script>
-    // Botón de demo: llama a /api/demo y pinta el resultado
-    const btn = document.getElementById('demoBtn');
-    const out = document.getElementById('demo-output');
-
-    async function runDemo(e){
-      e.preventDefault();
+    document.getElementById('demo').onclick = async () => {
+      const out = document.getElementById('demo-output');
       out.style.display='block';
       out.textContent='Running demo…';
       try{
-        const r = await fetch('/api/demo',{headers:{'Accept':'application/json'}});
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const data = await r.json();
-        out.innerHTML =
-          '<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0;">'
-          + JSON.stringify(data,null,2) +
-          '</pre><div style="opacity:.8;margin-top:8px">Fee policy: 10% of realized profits.</div>';
-      }catch(err){
-        out.innerHTML = '<span style="color:#fca5a5">Error:</span> ' + String(err);
+        const r = await fetch('/api/demo');
+        const js = await r.json();
+        out.innerHTML = '<b>Live Demo Result</b><pre style="white-space:pre-wrap;margin:8px 0 0">'+
+          JSON.stringify(js,null,2)+'</pre>';
+      }catch(e){
+        out.textContent = 'Demo not available';
       }
-    }
-    if(btn) btn.addEventListener('click', runDemo);
-
-    // Badge de estado: punto verde si /api/health responde
-    (async () => {
-      try {
-        const h = await fetch('/api/health');
-        const ok = h.ok;
-        const t = document.getElementById('appTitle');
-        if (t) {
-          const dot = document.createElement('span');
-          dot.title = ok ? 'API online' : 'API offline';
-          dot.style.cssText = 'display:inline-block;width:.6rem;height:.6rem;border-radius:9999px;background:'+(ok?'#34d399':'#ef4444')+';margin-right:.4rem;vertical-align:middle';
-          t.prepend(dot);
-        }
-      } catch {}
-    })();
+    };
   </script>
 </body>
 </html>
-
-<a href="/app/dashboard.html">Open Dashboard</a>
