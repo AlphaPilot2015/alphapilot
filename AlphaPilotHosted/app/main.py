@@ -1,7 +1,7 @@
 # app/main.py
 import datetime
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 
 app = FastAPI(
     title="AlphaPilot API",
