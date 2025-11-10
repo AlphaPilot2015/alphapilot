@@ -1,73 +1,42 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>AlphaPilot — Dashboard</title>
-  <style>
-    :root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--ok:#34d399;--err:#ef4444}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
-    .wrap{max-width:1000px;margin:0 auto;padding:20px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
-    button{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
-    code,pre{background:#0d1322;border-radius:10px;padding:12px;display:block;white-space:pre-wrap}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    .tag{display:inline-block;padding:4px 8px;border-radius:9999px;background:#111a2a;margin-left:8px}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>AlphaPilot <span id="status" class="tag">checking…</span></h1>
-
-    <div class="card">
-      <h2>API status</h2>
-      <div class="row">
-        <button id="btnHealth">Check /health</button>
-        <button id="btnDemo">Run /api/demo</button>
-      </div>
-      <pre id="outHealth" style="margin-top:12px"></pre>
-      <pre id="outDemo" style="margin-top:12px"></pre>
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AlphaPilot — Dashboard</title>
+<style>
+:root{--bg:#0b0f1a;--card:#0f1625;--border:#1f2b44;--primary:#4da3ff;--ok:#34d399;--err:#ef4444}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eaf1ff;font-family:Inter,system-ui,Arial}
+.wrap{max-width:1000px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px}
+button{background:var(--primary);border:0;color:#001;padding:10px 14px;border-radius:10px;cursor:pointer}
+code,pre{background:#0d1322;border-radius:10px;padding:12px;display:block;white-space:pre-wrap}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.tag{display:inline-block;padding:4px 8px;border-radius:9999px;background:#111a2a;margin-left:8px}
+</style></head><body>
+<div class="wrap">
+  <h1>AlphaPilot <span id="status" class="tag">checking…</span></h1>
+  <div class="card">
+    <h2>API status</h2>
+    <div class="row">
+      <button id="btnHealth">Check /health</button>
+      <button id="btnDemo">Run /api/demo</button>
     </div>
-
-    <div class="card">
-      <h2>Quick links</h2>
-      <div class="row">
-        <a href="/api/docs" target="_blank"><button>Open Swagger /api/docs</button></a>
-        <a href="/" target="_blank"><button>Root JSON</button></a>
-      </div>
+    <pre id="outHealth" style="margin-top:12px"></pre>
+    <pre id="outDemo" style="margin-top:12px"></pre>
+  </div>
+  <div class="card">
+    <h2>Quick links</h2>
+    <div class="row">
+      <a href="/api/docs" target="_blank"><button>Open Swagger /api/docs</button></a>
+      <a href="/" target="_blank"><button>Root JSON</button></a>
     </div>
   </div>
-
-  <script>
-    const status = document.getElementById('status');
-    const outH = document.getElementById('outHealth');
-    const outD = document.getElementById('outDemo');
-
-    async function ping() {
-      try {
-        const r = await fetch('/health');
-        status.textContent = r.ok ? 'API online' : 'API error';
-        status.style.background = r.ok ? 'var(--ok)' : 'var(--err)';
-      } catch { status.textContent = 'API error'; status.style.background = 'var(--err)'; }
-    }
-
-    document.getElementById('btnHealth').onclick = async () => {
-      outH.textContent = '...';
-      try{
-        const r = await fetch('/health');
-        outH.textContent = (await r.text());
-      }catch(e){ outH.textContent = String(e); }
-    };
-
-    document.getElementById('btnDemo').onclick = async () => {
-      outD.textContent = '...';
-      try{
-        const r = await fetch('/api/demo', {headers: {'Accept':'application/json'}});
-        outD.textContent = JSON.stringify(await r.json(), null, 2);
-      }catch(e){ outD.textContent = String(e); }
-    };
-
-    ping();
-  </script>
-</body>
-</html>
+</div>
+<script>
+const status=document.getElementById('status');
+const outH=document.getElementById('outHealth');
+const outD=document.getElementById('outDemo');
+async function ping(){try{const r=await fetch('/health');status.textContent=r.ok?'API online':'API error';status.style.background=r.ok?'var(--ok)':'var(--err)';}catch{status.textContent='API error';status.style.background='var(--err)';}}
+document.getElementById('btnHealth').onclick=async()=>{outH.textContent='...';try{const r=await fetch('/health');outH.textContent=await r.text();}catch(e){outH.textContent=String(e);}};
+document.getElementById('btnDemo').onclick=async()=>{outD.textContent='...';try{const r=await fetch('/api/demo',{headers:{'Accept':'application/json'}});outD.textContent=JSON.stringify(await r.json(),null,2);}catch(e){outD.textContent=String(e);}};
+ping();
+</script>
+</body></html>
