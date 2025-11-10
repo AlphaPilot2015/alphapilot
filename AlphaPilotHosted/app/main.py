@@ -1,6 +1,6 @@
 import datetime
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 
 app = FastAPI(
     title="AlphaPilot API",
@@ -20,11 +20,11 @@ def demo():
 
 @app.get("/api/privacy", response_class=HTMLResponse)
 def privacy():
-    return "<h1>Privacy Policy</h1><p>AlphaPilot processes data. Investing involves risk.</p>"
+    return "<h1>Privacy</h1><p>Demo. Investing involves risk.</p>"
 
 @app.get("/api/terms", response_class=HTMLResponse)
 def terms():
-    return "<h1>Terms</h1><p>Use at your own risk. No guaranteed profits.</p>"
+    return "<h1>Terms</h1><p>No guaranteed profits.</p>"
 
 @app.get("/")
 def root():
