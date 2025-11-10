@@ -1,36 +1,28 @@
-# ===== API build (Python) =====
-FROM python:3.11-slim AS api
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# -------- stage: api --------
+FROM python:3.11-slim-bookworm AS api
 WORKDIR /app
-COPY requirements.txt ./
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 
-# ===== Runner (MISMA BASE: python:3.11-slim) =====
-FROM python:3.11-slim
+# -------- stage: final --------
+FROM debian:bookworm-slim
 WORKDIR /
-# gettext-base trae 'envsubst'
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      nginx supervisor ca-certificates gettext-base \
-    && rm -rf /var/lib/apt/lists/*
+    nginx supervisor python3 ca-certificates gettext-base \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copiamos runtime y la app desde el stage api
+# copy python runtime/libs from api stage
 COPY --from=api /usr/local /usr/local
 COPY --from=api /app /app
 
-# Frontend estático
+# frontend + configs
 COPY frontend /var/www/html
-
-# Configs plantilla + supervisord
 COPY infra/nginx.tmpl.conf /etc/nginx/nginx.tmpl.conf
 COPY infra/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# Script de arranque: SOLO sustituye ${PORT} (no toca $host/$scheme)
-RUN printf '%s\n' '#!/usr/bin/env sh' \
-    'set -e' \
-    ': "${PORT:=8080}"' \
-    'envsubst '\''${PORT}'\'' < /etc/nginx/nginx.tmpl.conf > /etc/nginx/nginx.conf' \
-    'exec /usr/bin/supervisord -n' > /start.sh \
- && chmod +x /start.sh
-
+ENV PORT=8080
+EXPOSE 8080
 CMD ["/start.sh"]
