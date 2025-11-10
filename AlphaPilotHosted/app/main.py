@@ -1,10 +1,10 @@
 import datetime
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI(
     title="AlphaPilot API",
-    version="0.1.3",
+    version="0.1.2",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
     redoc_url=None,
