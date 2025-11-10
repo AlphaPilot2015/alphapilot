@@ -1,10 +1,11 @@
+# app/main.py
 import datetime
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI(
     title="AlphaPilot API",
-    version="0.1.1",
+    version="0.1.3",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
     redoc_url=None,
@@ -26,7 +27,6 @@ def privacy():
 def terms():
     return "<h1>Terms</h1><p>Use at your own risk. No guaranteed profits.</p>"
 
-# Página raíz simple (opcional)
 @app.get("/")
 def root():
     return {"app": "AlphaPilot API", "use": "open /app/dashboard.html for UI"}
