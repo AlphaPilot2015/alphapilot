@@ -219,7 +219,7 @@ def blended_signal(symbol: str, fast=5, slow=20):
         return "sell", info
     return "hold", info
     
-# Sustituye dentro de rebalance_symbol:
+# --- Sustituye dentro de rebalance_symbol ---
 sig, info = blended_signal(symbol)
 price = info.get("last", 0.0)
 cash = get_cash()
@@ -231,5 +231,41 @@ scale = 1.0 + NEWS_WEIGHT * abs(bias)
 if sig == "buy":
     qty = _desired_qty(cash, price)
     qty = int(qty * scale)
-    ...
-elif sig == "sell" ...
+    if qty > 0:
+        order = submit_market_order(symbol, qty, "buy")
+        return {
+            "symbol": symbol,
+            "action": "buy",
+            "qty": qty,
+            "price": price,
+            "info": info,
+            "order": order,
+        }
+    return {
+        "symbol": symbol,
+        "action": "hold",
+        "reason": "no-cash-or-low-price",
+        "info": info,
+    }
+
+elif sig == "sell":
+    # vender solo si se tiene posición
+    held = 0
+    for p in positions():
+        if p["symbol"] == symbol:
+            held = int(float(p["qty"]))
+            break
+    if held > 0:
+        order = submit_market_order(symbol, held, "sell")
+        return {
+            "symbol": symbol,
+            "action": "sell",
+            "qty": held,
+            "price": price,
+            "info": info,
+            "order": order,
+        }
+    return {"symbol": symbol, "action": "hold", "reason": "no-position", "info": info}
+
+else:
+    return {"symbol": symbol, "action": "hold", "info": info}
