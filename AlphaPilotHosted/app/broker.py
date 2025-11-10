@@ -1,72 +1,142 @@
 # app/broker.py
 import os
-from alpaca_trade_api.rest import REST, TimeFrame, APIError
+from typing import Dict, List, Optional
+import pandas as pd
 
-# 🧩 Cargamos las claves de entorno desde Render
-ALPACA_API_KEY = os.getenv("ALPACA_API_KEY")
-ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
-ALPACA_BASE_URL = os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+# Librería oficial (modo "legacy" estable y sencilla)
+from alpaca_trade_api.rest import REST, TimeFrame
 
-# 🔌 Conexión al broker Alpaca
-api = REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, base_url=ALPACA_BASE_URL)
+# Lee credenciales del entorno (Render → Environment)
+APCA_API_KEY_ID = os.getenv("APCA_API_KEY_ID", "")
+APCA_API_SECRET_KEY = os.getenv("APCA_API_SECRET_KEY", "")
+APCA_API_BASE_URL = os.getenv("APCA_API_BASE_URL", "https://paper-api.alpaca.markets")
 
-# ✅ Funciones principales
-def account():
-    """Devuelve información de la cuenta"""
-    return api.get_account()._raw
+# Instancia única del cliente
+_api: Optional[REST] = None
 
-def positions():
-    """Devuelve las posiciones abiertas"""
-    return [p._raw for p in api.list_positions()]
 
-def get_cash():
-    """Devuelve el efectivo disponible"""
-    return float(api.get_account().cash)
+def api() -> REST:
+    """Devuelve un cliente REST autenticado (Paper o Live según APCA_API_BASE_URL)."""
+    global _api
+    if _api is None:
+        if not APCA_API_KEY_ID or not APCA_API_SECRET_KEY:
+            raise RuntimeError("Faltan credenciales Alpaca (APCA_API_KEY_ID/SECRET_KEY).")
+        _api = REST(
+            key_id=APCA_API_KEY_ID,
+            secret_key=APCA_API_SECRET_KEY,
+            base_url=APCA_API_BASE_URL,
+            api_version="v2",
+        )
+    return _api
 
-def bars(symbol, limit=100, tf=TimeFrame.Minute):
-    """Devuelve las últimas velas del símbolo"""
-    return api.get_bars(symbol, tf, limit=limit).df
 
-def market_is_open():
-    """Comprueba si el mercado está abierto"""
-    clock = api.get_clock()
-    return bool(clock.is_open)
+# ------------------- Datos de mercado -------------------
 
-def submit_market_order(symbol: str, qty: int, side: str):
-    """Ejecuta una orden de mercado (compra o venta)"""
+def bars(symbol: str, limit: int = 200, tf: TimeFrame = TimeFrame.Minute) -> Optional[pd.DataFrame]:
+    """
+    Devuelve OHLCV en DataFrame con columnas: open, high, low, close, volume (indexado por tiempo).
+    """
     try:
-        o = api.submit_order(
+        a = api()
+        resp = a.get_bars(symbol, tf, limit=limit, adjustment='raw')
+        # .df (DataFrame) está disponible en alpaca-trade-api
+        df = resp.df.copy()
+        if df.empty:
+            return None
+        # Si pedimos un solo símbolo, el DF puede venir multiindexado por symbol/time
+        if isinstance(df.index, pd.MultiIndex):
+            # filtra el símbolo y quita el nivel del símbolo
+            df = df.xs(symbol, level=0)
+        # Unifica nombres a minúsculas
+        df = df.rename(
+            columns={
+                "open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"
+            }
+        )
+        return df
+    except Exception as e:
+        print(f"[broker.bars] error fetching bars for {symbol}: {e}")
+        return None
+
+
+def bars_multi(symbols: List[str], limit: int = 200, tf: TimeFrame = TimeFrame.Minute) -> Dict[str, pd.DataFrame]:
+    """
+    Descarga barras por símbolo (simple y robusto: 1 request por símbolo).
+    Devuelve dict {symbol: DataFrame|None}
+    """
+    out: Dict[str, pd.DataFrame] = {}
+    for sym in symbols:
+        out[sym] = bars(sym, limit=limit, tf=tf) or pd.DataFrame()
+    return out
+
+
+# ------------------- Cuenta / posiciones -------------------
+
+def get_cash() -> float:
+    """Efectivo disponible en la cuenta (float)."""
+    try:
+        a = api()
+        acc = a.get_account()
+        return float(acc.cash or 0.0)
+    except Exception as e:
+        print(f"[broker.get_cash] error: {e}")
+        return 0.0
+
+
+def positions() -> List[Dict]:
+    """Lista de posiciones: [{'symbol': 'AAPL', 'qty': '10', 'avg_entry_price': '...'}, ...]."""
+    try:
+        a = api()
+        poss = a.list_positions()
+        out = []
+        for p in poss:
+            out.append(
+                {
+                    "symbol": p.symbol,
+                    "qty": p.qty,  # string en API; conviértelo a int/float cuando lo uses
+                    "avg_entry_price": p.avg_entry_price,
+                    "market_value": p.market_value,
+                    "unrealized_pl": p.unrealized_pl,
+                }
+            )
+        return out
+    except Exception as e:
+        print(f"[broker.positions] error: {e}")
+        return []
+
+
+# ------------------- Órdenes -------------------
+
+def submit_market_order(symbol: str, qty: int, side: str, tif: str = "day") -> Dict:
+    """
+    Envía una orden de mercado. side ∈ {'buy','sell'} ; tif ∈ {'day','gtc'}
+    Retorna un dict con los campos principales de la orden.
+    """
+    side = side.lower().strip()
+    if side not in ("buy", "sell"):
+        raise ValueError("side debe ser 'buy' o 'sell'")
+    if qty <= 0:
+        return {"status": "skipped", "reason": "qty<=0"}
+
+    try:
+        a = api()
+        order = a.submit_order(
             symbol=symbol,
             qty=qty,
             side=side,
-            type='market',
-            time_in_force='day'
+            type="market",
+            time_in_force=tif,
         )
-        return o._raw
-    except APIError as e:
-        return {"error": str(e)}
-# --- Añadir en app/broker.py ---
-
-from typing import List, Dict
-import pandas as pd
-
-def bars_multi(symbols: List[str], limit=50, tf=TimeFrame.Minute):
-    """
-    Devuelve un dict {symbol: DataFrame} con las últimas velas por símbolo.
-    Usa el endpoint multi-símbolo para reducir llamadas y evitar límites.
-    """
-    if not symbols:
-        return {}
-    # DataFrame multi-símbolo (índice multi: (symbol, timestamp))
-    df = api.get_bars(symbols, tf, limit=limit).df
-    out: Dict[str, pd.DataFrame] = {}
-    if df is None or df.empty:
-        return out
-    # Agrupa por símbolo
-    for sym in symbols:
-        sdf = df[df.index.get_level_values("symbol") == sym]
-        if not sdf.empty:
-            # quita el nivel de índice del símbolo para trabajar cómodo
-            sdf = sdf.droplevel("symbol")
-            out[sym] = sdf
-    return out
+        return {
+            "id": order.id,
+            "symbol": order.symbol,
+            "qty": order.qty,
+            "side": order.side,
+            "type": order.type,
+            "time_in_force": order.time_in_force,
+            "status": order.status,
+            "created_at": str(order.created_at),
+        }
+    except Exception as e:
+        print(f"[broker.submit_market_order] error: {e}")
+        return {"status": "error", "error": str(e)}
