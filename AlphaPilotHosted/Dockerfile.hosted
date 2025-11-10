@@ -1,38 +1,37 @@
-# ===== Stage 1: build del runtime con Python + deps del sistema =====
-FROM python:3.11-slim AS base
+# ====== Etapa 1: Python + deps ======
+FROM python:3.11-slim AS api
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Paquetes que necesitamos (nginx, supervisor, utilidades)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx supervisor gettext-base ca-certificates curl \
-  && rm -rf /var/lib/apt/lists/*
-
-# Crear directorios destino
 WORKDIR /app
-RUN mkdir -p /var/www/html /etc/nginx /etc/supervisor/conf.d
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# ===== Stage 2: copiar tu código =====
-# Copiamos backend
-COPY app /app/app
-# Si tuvieras requirements.txt, descomenta:
-# COPY requirements.txt /app/
-# RUN pip install --no-cache-dir -r /app/requirements.txt
-# (para tu demo sin deps extras, FastAPI & Uvicorn ya están en la imagen base si los añades)
-RUN pip install --no-cache-dir fastapi uvicorn
+COPY app ./app
 
-# Copiamos frontend estático
+# ====== Etapa 2: Sistema con Nginx + Supervisor + Python ======
+FROM debian:12-slim AS stage-1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      nginx supervisor python3 ca-certificates gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiamos Python + libs de la etapa api
+COPY --from=api /usr/local /usr/local
+# Copiamos nuestro backend y frontend
+COPY --from=api /app /app
 COPY frontend /var/www/html
 
-# Copiamos configs y start
+# Nginx & Supervisor
 COPY infra/nginx.tmpl.conf /etc/nginx/nginx.tmpl.conf
 COPY infra/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Script de arranque
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Variables requeridas por Render
+# Render te da $PORT. Por defecto 8080 localmente.
 ENV PORT=8080
 
-# Exponemos el puerto
 EXPOSE 8080
-
-# Arranque
 CMD ["/start.sh"]
